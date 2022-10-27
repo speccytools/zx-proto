@@ -74,6 +74,12 @@ extern uint8_t proto_req_send_request(
     proto_client_process(proto, proto_req_new_request, proto_req_object_callback, proto_req_recv, handle)
 
 /*
+ * Should be called instead of proto_server_process with custom callbacks, if you want the request-response system
+ */
+#define proto_req_server_process(sockfd, proto, handle) \
+    proto_server_process(sockfd, proto, proto_req_new_request, proto_req_object_callback, proto_req_recv, handle)
+
+/*
  * These function should be passed to either
  *
  * proto_server_process(client_socket, &proto, proto_req_new_request, proto_req_object_callback,
