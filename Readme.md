@@ -32,6 +32,13 @@ To use this on your project, simply add it as a submodule,
 and do `add_subdirectory()` on your CMake project.
 See examples on how it's done.
 
+```cmake
+add_subdirectory("zx-proto")
+target_link_libraries(<project> PUBLIC libspectranet.lib libsocket.lib channels_proto)
+```
+
+For server use, if you need functionality that uses malloc or/and request-response support, you also have to link `channels_proto_server`.
+
 ## Protocol details
 
 See [protocol details](./Protocol.md) to see how the protocol and communication works.
