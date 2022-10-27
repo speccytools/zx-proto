@@ -6,7 +6,7 @@ without having to worry about buffers or/and protocol details.
 
 ## Overview
 
-The objects use as little memory as possible and do dirty tricks to use even less.
+The objects use as little memory as possible and do [dirty tricks](https://github.com/speccytools/zx-proto/blob/master/include/proto_objects.h#L39) to use even less.
 To function, the library uses [Spectranet](https://speccytools.org) on ZX Spectrum and simple
 sockets on PC. Ultimately, same POSIX API.
 
