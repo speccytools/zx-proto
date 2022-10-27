@@ -60,7 +60,9 @@ typedef struct
 
 #pragma pack(pop)
 
-
+/*
+ * Declare a C-string property. Must be zero-terminated, as strlen is used.
+ */
 #define declare_str_property_on_stack(name, property_key, property_value, property_prev) \
     ProtoStackObjectProperty name;                                  \
     {                                                                 \
@@ -70,6 +72,9 @@ typedef struct
         name.prev = property_prev;                                    \
     }
 
+/*
+ * Declare a static-size property, like uint8_t or uint16_t. Can be anything really.
+ */
 #define declare_arg_property_on_stack(name, property_key, property, property_prev) \
     ProtoStackObjectProperty name;                                    \
     {                                                                 \
@@ -79,6 +84,9 @@ typedef struct
         name.prev = property_prev;                                    \
     }
 
+/*
+ * Declare a property with length of anything you want. Can be a non-C-style string without 0-termination.
+ */
 #define declare_variable_property_on_stack(name, property_key, property_ptr, property_size, property_prev) \
     ProtoStackObjectProperty name;                                    \
     {                                                                 \
@@ -88,6 +96,12 @@ typedef struct
         name.prev = property_prev;                                    \
     }
 
+/*
+ * Declear an object to be ready to be sent off. You have to make sure the buffer size fits all the properties. It's not a good
+ * idea to have a buffer more than 512 bytes, as this is stack. Alternatively, you can just proto_object_assign to a static location yourself.
+ * last_property is a last property of a daisy-chain of properties. Every property declared, except the first one, has a previous property.
+ * Thus the method can reconstruct the whole object wihout having to allocate a separate list.
+ */
 #define declare_object_on_stack(name, buffer_size, last_property)     \
     uint8_t name ## _buffer [buffer_size];                            \
     ProtoObject* name = (ProtoObject*)name ## _buffer;                \
