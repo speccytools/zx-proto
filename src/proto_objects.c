@@ -167,6 +167,29 @@ uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def)
     return def;
 }
 
+uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size)
+{
+    ProtoObjectProperty** prop = o->properties;
+    while (*prop)
+    {
+        if ((*prop)->key == key)
+        {
+            uint16_t max_size = (*prop)->value_size;
+            if (max_size >= target_buffer_size)
+            {
+                // leave place for zero termination
+                max_size = target_buffer_size - 1;
+            }
+            memcpy(target_buffer, (*prop)->value, max_size);
+            target_buffer[max_size] = '\0';
+            return 0;
+        }
+        prop++;
+    }
+
+    return 1;
+}
+
 uint8_t* proto_object_data(ProtoObject* o)
 {
     uint8_t number_of_properties = 0;

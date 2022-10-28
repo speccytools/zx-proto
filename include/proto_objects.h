@@ -161,6 +161,13 @@ extern uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def);
 extern uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def);
 
 /*
+ * Get C-string property value by a given key into target_buffer. If no property has been found, 1 is returned, 0 on success.
+ * target_buffer has to be sufficient fot the value size.
+ * An object can contain multiple properties with the same key, this function returns only the first match.
+ */
+extern uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size);
+
+/*
  * Get string value of a given property. A copy is returned (heap allocated), and it is automatically null-terminated.
  */
 extern char* copy_str_property(ProtoObjectProperty* property);
