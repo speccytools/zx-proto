@@ -307,6 +307,14 @@ static int recv_process(
             process_proto->total_received -= (uint16_t)process_proto->total_consumed;
         }
     }
+
+#ifdef WIN32
+    if(n_received == SOCKET_ERROR && WSAGetLastError() == WSAECONNRESET)
+    {
+        return -2;
+    }
+#endif
+
 #ifdef NONBLOCKING_RECV
     if (n_received == 0)
     {
@@ -317,12 +325,14 @@ static int recv_process(
     {
         return 0;
     }
+
 #else
     if (n_received <= 0)
     {
         return -2;
     }
 #endif
+
     return 0;
 }
 
