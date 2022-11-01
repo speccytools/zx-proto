@@ -6,6 +6,7 @@
 #else
 #ifdef __SPECTRUM
 #   include <sockpoll.h>
+#   include <spectranet.h>
 #else
 #   include <poll.h>
 #   include <arpa/inet.h>
@@ -32,6 +33,13 @@
 int client_socket = 0;
 static disconnected_callback_f client_disconnected = NULL;
 #endif
+
+void proto_init(struct proto_process_t* proto, uint8_t* process_buffer, uint16_t process_buffer_size)
+{
+    memset(proto, 0, sizeof(struct proto_process_t));
+    proto->process_buffer = process_buffer;
+    proto->process_buffer_size = process_buffer_size;
+}
 
 #ifdef PROTO_SERVER
 int proto_listen(int port)
@@ -271,7 +279,7 @@ static int recv_process(
 #endif
 )
 {
-    uint16_t afford = sizeof(process_proto->process_buffer) - process_proto->total_received;
+    uint16_t afford = process_proto->process_buffer_size - process_proto->total_received;
 
 #ifdef NONBLOCKING_RECV
     int n_received = recv(process_socket, process_proto->process_buffer + process_proto->total_received,

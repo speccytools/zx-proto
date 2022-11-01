@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <input.h>
 
+static uint8_t client_proto_buffer[512];
 static struct proto_process_t client_proto = {};
 static struct proto_req_processor_t req_handle = {};
 
@@ -108,6 +109,9 @@ int main()
     {
         strcpy(input_string, "127.0.0.1");
     }
+
+    /* supply a working buffer to the proto */
+    proto_init(&client_proto, client_proto_buffer, sizeof(client_proto_buffer));
 
     /*
      * Connect

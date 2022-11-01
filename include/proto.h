@@ -42,10 +42,12 @@ struct proto_process_t
     uint16_t recv_size;
     uint16_t request_id;
     uint16_t recv_object_size;
-    uint8_t process_buffer[1024];
     uint16_t total_received;
     uint16_t total_consumed;
     uint8_t recv_objects_num;
+
+    uint8_t* process_buffer;
+    uint16_t process_buffer_size;
 };
 
 typedef void (*disconnected_callback_f)(void);
@@ -53,6 +55,11 @@ typedef void (*proto_start_request_callback_f)(int socket, struct proto_process_
 typedef void (*proto_next_object_callback_f)(int socket, struct proto_process_t* proto, ProtoObject* object, void* user);
 // return NULL in case of success, or a text explaining the error
 typedef const char* (*proto_complete_request_callback_f)(int socket, struct proto_process_t* proto, void* user);
+
+/*
+ * Initialize a proto with a working buffer provided. Has to be called ones
+ */
+extern void proto_init(struct proto_process_t* proto, uint8_t* process_buffer, uint16_t process_buffer_size);
 
 #ifdef PROTO_CLIENT
 /*

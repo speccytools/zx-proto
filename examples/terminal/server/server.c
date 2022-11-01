@@ -71,6 +71,10 @@ int main()
         struct proto_req_processor_t client_req_processor = {};
         struct proto_process_t client_proto = {};
         struct server_client_handlers_t client_handlers = {};
+        uint8_t client_proto_buffer[512];
+
+        /* supply a working buffer to the proto */
+        proto_init(&client_proto, client_proto_buffer, sizeof(client_proto_buffer));
 
         /* init_handlers has generated us a list of command handles, so let's bind it to client_handlers */
         server_handlers_init(&client_handlers, handler_functions, NULL);

@@ -20,6 +20,12 @@ You can read about both on [speccytools.org](https://speccytools.org/).
 Project uses CMake both on Server (PC) and Client (ZX Spectrum).
 Latest z88dk supports CMake as well, so it should build.
 
+When setting things up, make sure to allocate a working buffer of sufficient size,
+and supply it via `proto_init(proto, buffer, buffer_size)` call.
+The size of the buffer should be enough for one biggest object
+on a request/response, and it doesn't have to fit the whole response,
+as responses are processed on per-object basis and not as a whole.
+
 See [terminal example](./examples/terminal/Readme.md) to see how the protocol works, as well the library.
 
 If didn't export `ZCCCFG` variable, do it to something like:
