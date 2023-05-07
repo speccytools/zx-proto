@@ -12,6 +12,7 @@ extern "C" {
 #define PROTO_CLIENT (1)
 #else
 #define PROTO_SERVER (1)
+#define SANITY_CHECKS (1)
 #endif
 
 #ifdef PROTO_SERVER
@@ -34,13 +35,17 @@ enum proto_process_state_t
 #define PROTO_FLAG_ERROR (0x01)
 #define PROTO_FLAG_RESPONSE (0x02)
 
+
+#pragma pack(push)
+#pragma pack(1)
+
 struct proto_process_t
 {
     enum proto_process_state_t state;
-    uint16_t recv_consumed;
     uint8_t recv_flags;
     uint16_t recv_size;
     uint16_t request_id;
+    uint16_t recv_consumed;
     uint16_t recv_object_size;
     uint16_t total_received;
     uint16_t total_consumed;
@@ -50,6 +55,8 @@ struct proto_process_t
     uint16_t process_buffer_size;
 };
 
+#pragma pack(pop)
+
 typedef void (*disconnected_callback_f)(void);
 typedef void (*proto_start_request_callback_f)(int socket, struct proto_process_t* proto, void* user);
 typedef void (*proto_next_object_callback_f)(int socket, struct proto_process_t* proto, ProtoObject* object, void* user);
@@ -58,8 +65,13 @@ typedef const char* (*proto_complete_request_callback_f)(int socket, struct prot
 
 /*
  * Initialize a proto with a working buffer provided. Has to be called ones
+ * On STACKLESS proto implementation, an "extern struct proto_process_t process_proto" has to be declared somehwere.
  */
-extern void proto_init(struct proto_process_t* proto, uint8_t* process_buffer, uint16_t process_buffer_size);
+extern void proto_init(
+#ifndef STACKLESS_PROCESS
+    struct proto_process_t* process_proto,
+#endif
+    uint8_t* process_buffer, uint16_t process_buffer_size);
 
 #ifdef PROTO_CLIENT
 /*
@@ -85,11 +97,15 @@ extern void proto_disconnect();
  * complete_request: a callback that will be called when all object have been processed.
  * user: a variable that will be passed to start_request, next and complete_request, for user purposes.
  *
+ * On STACKLESS proto implementation, an "extern struct proto_process_t process_proto" has to be declared somehwere.
+ *
  * When a proto_req.h sub-library is used, should be called as follows:
  * proto_req_client_process(&proto, &req_handle);
  */
 extern void proto_client_process(
+#ifndef STACKLESS_PROCESS
     struct proto_process_t* proto,
+#endif
     proto_start_request_callback_f start_request,
     proto_next_object_callback_f next,
     proto_complete_request_callback_f complete_request,

@@ -40,7 +40,7 @@ See examples on how it's done.
 
 ```cmake
 add_subdirectory("zx-proto")
-target_link_libraries(<project> PUBLIC libspectranet.lib libsocket.lib channels_proto)
+target_link_libraries(<project> PUBLIC libspectranet.lib libsocket.lib channels_proto channels_proto_asm)
 ```
 
 For server use, if you need functionality that uses malloc or/and request-response support, you also have to link `channels_proto_server`.

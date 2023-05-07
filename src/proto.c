@@ -34,11 +34,40 @@ int client_socket = 0;
 static disconnected_callback_f client_disconnected = NULL;
 #endif
 
-void proto_init(struct proto_process_t* proto, uint8_t* process_buffer, uint16_t process_buffer_size)
+/*
+ * On stackless implementation a global static struct is used, thus the compiler knows direct address of every
+ * struct member (.), on implementation with stack, the proto object is reference by a pointer,
+ * and thus struct members are resolved by an offset to that pointed (->)
+ */
+
+#ifdef STACKLESS_PROCESS
+#define PROTO_MEMBER .
+#else
+#define PROTO_MEMBER ->
+#endif
+
+#ifdef STACKLESS_PROCESS
+static int process_socket;
+extern struct proto_process_t process_proto;
+static proto_start_request_callback_f process_start_request;
+static proto_next_object_callback_f process_next;
+static proto_complete_request_callback_f process_complete_request;
+static void* process_user;
+#endif
+
+void proto_init(
+#ifndef STACKLESS_PROCESS
+    struct proto_process_t* process_proto,
+#endif
+    uint8_t* process_buffer, uint16_t process_buffer_size)
 {
-    memset(proto, 0, sizeof(struct proto_process_t));
-    proto->process_buffer = process_buffer;
-    proto->process_buffer_size = process_buffer_size;
+#ifdef STACKLESS_PROCESS
+    memset(&process_proto, 0, sizeof(struct proto_process_t));
+#else
+    memset(process_proto, 0, sizeof(struct proto_process_t));
+#endif
+    process_proto PROTO_MEMBER process_buffer = process_buffer;
+    process_proto PROTO_MEMBER process_buffer_size = process_buffer_size;
 }
 
 #ifdef PROTO_SERVER
@@ -136,15 +165,6 @@ int proto_connect(const char* host, int port, disconnected_callback_f disconnect
 }
 #endif
 
-#ifdef STACKLESS_PROCESS
-static int process_socket;
-static struct proto_process_t* process_proto;
-static proto_start_request_callback_f process_start_request;
-static proto_next_object_callback_f process_next;
-static proto_complete_request_callback_f process_complete_request;
-static void* process_user;
-#endif
-
 static uint8_t process(
 #ifndef STACKLESS_PROCESS
     int process_socket,
@@ -156,28 +176,35 @@ static uint8_t process(
 #endif
 )
 {
-    process_proto->total_consumed = 0;
-    uint16_t available = process_proto->total_received;
-    uint8_t* data = (uint8_t*)process_proto->process_buffer;
+    process_proto PROTO_MEMBER total_consumed = 0;
+#ifdef STACKLESS_PROCESS
+    static uint16_t available;
+#else
+    uint16_t
+#endif
+    available = process_proto PROTO_MEMBER total_received;
+#ifdef STACKLESS_PROCESS
+    static uint8_t* data;
+#else
+    uint8_t*
+#endif
+    data = (uint8_t*)process_proto PROTO_MEMBER process_buffer;
 
     while (1)
     {
-        switch (process_proto->state)
+        switch (process_proto PROTO_MEMBER state)
         {
             case proto_process_recv_header:
             {
                 if (available >= 5)
                 {
-                    process_proto->recv_flags = *data++;
-                    process_proto->recv_size = *(uint16_t*)data;
-                    data += 2;
-                    process_proto->request_id = *(uint16_t*)data;
-                    data += 2;
-                    process_proto->recv_consumed = 0;
-                    process_proto->recv_objects_num = 0;
-                    process_proto->total_consumed += 5;
+                    memcpy(&process_proto PROTO_MEMBER recv_flags, data, 5);
+                    data += 5;
+                    process_proto PROTO_MEMBER recv_consumed = 0;
+                    process_proto PROTO_MEMBER recv_objects_num = 0;
+                    process_proto PROTO_MEMBER total_consumed += 5;
                     available -= 5;
-                    process_proto->state = proto_process_recv_object_size;
+                    process_proto PROTO_MEMBER state = proto_process_recv_object_size;
                     process_start_request(process_socket, process_proto, process_user);
                     /* fallthrough */
                 }
@@ -190,12 +217,12 @@ static uint8_t process(
             {
                 if (available >= sizeof(uint16_t))
                 {
-                    process_proto->recv_object_size = *(uint16_t*)data;
-                    process_proto->total_consumed += 2;
+                    process_proto PROTO_MEMBER recv_object_size = *(uint16_t*)data;
+                    process_proto PROTO_MEMBER total_consumed += 2;
                     available -= 2;
                     data += 2;
-                    process_proto->recv_consumed += 2;
-                    process_proto->state = proto_process_recv_object;
+                    process_proto PROTO_MEMBER recv_consumed += 2;
+                    process_proto PROTO_MEMBER state = proto_process_recv_object;
                     /* fallthrough */
                 }
                 else
@@ -205,23 +232,27 @@ static uint8_t process(
             }
             case proto_process_recv_object:
             {
-                if (available >= process_proto->recv_object_size)
+                if (available >= process_proto PROTO_MEMBER recv_object_size)
                 {
 
                     {
+#ifdef STACKLESS_PROCESS
+                        static
+#endif
                         uint8_t object_buffer[128];
+
                         ProtoObject* obj = (ProtoObject*)object_buffer;
-                        uint8_t res = proto_object_read(obj, 128, process_proto->recv_object_size, data);
+                        proto_object_read(obj, 128, process_proto PROTO_MEMBER recv_object_size, data);
                         process_next(process_socket, process_proto, obj, process_user);
                     }
 
-                    process_proto->recv_objects_num++;
-                    process_proto->total_consumed += process_proto->recv_object_size;
-                    available -= process_proto->recv_object_size;
-                    data += process_proto->recv_object_size;
-                    process_proto->recv_consumed += process_proto->recv_object_size;
+                    process_proto PROTO_MEMBER recv_objects_num++;
+                    process_proto PROTO_MEMBER total_consumed += process_proto PROTO_MEMBER recv_object_size;
+                    available -= process_proto PROTO_MEMBER recv_object_size;
+                    data += process_proto PROTO_MEMBER recv_object_size;
+                    process_proto PROTO_MEMBER recv_consumed += process_proto PROTO_MEMBER recv_object_size;
 
-                    if (process_proto->recv_consumed >= process_proto->recv_size)
+                    if (process_proto PROTO_MEMBER recv_consumed >= process_proto PROTO_MEMBER recv_size)
                     {
                         const char* err = process_complete_request(process_socket, process_proto, process_user);
 
@@ -233,18 +264,18 @@ static uint8_t process(
                             ProtoObject* objs[1];
                             objs[0] = response_object;
 
-                            if (proto_send(process_socket, objs, 1, process_proto->request_id,
+                            if (proto_send(process_socket, objs, 1, process_proto PROTO_MEMBER request_id,
                                 PROTO_FLAG_ERROR | PROTO_FLAG_RESPONSE))
                             {
                                 return -1;
                             }
                         }
 
-                        process_proto->state = proto_process_recv_header;
+                        process_proto PROTO_MEMBER state = proto_process_recv_header;
                     }
                     else
                     {
-                        process_proto->state = proto_process_recv_object_size;
+                        process_proto PROTO_MEMBER state = proto_process_recv_object_size;
                     }
                     break;
                 }
@@ -279,19 +310,19 @@ static int recv_process(
 #endif
 )
 {
-    uint16_t afford = process_proto->process_buffer_size - process_proto->total_received;
+    uint16_t afford = process_proto PROTO_MEMBER process_buffer_size - process_proto PROTO_MEMBER total_received;
 
 #ifdef NONBLOCKING_RECV
-    int n_received = recv(process_socket, process_proto->process_buffer + process_proto->total_received,
+    int n_received = recv(process_socket, process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received,
         afford, MSG_DONTWAIT);
 #else
-    int n_received = recv(process_socket, process_proto->process_buffer + process_proto->total_received,
+    int n_received = recv(process_socket, process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received,
         afford, 0);
 #endif
 
     if (n_received > 0)
     {
-        process_proto->total_received += n_received;
+        process_proto PROTO_MEMBER total_received += n_received;
 
         uint8_t res = process(
 #ifndef STACKLESS_PROCESS
@@ -303,16 +334,16 @@ static int recv_process(
             return -1;
         }
 
-        if (process_proto->total_consumed == process_proto->total_received)
+        if (process_proto PROTO_MEMBER total_consumed == process_proto PROTO_MEMBER total_received)
         {
-            process_proto->total_consumed = 0;
-            process_proto->total_received = 0;
+            process_proto PROTO_MEMBER total_consumed = 0;
+            process_proto PROTO_MEMBER total_received = 0;
         }
         else
         {
-            memmove(process_proto->process_buffer, process_proto->process_buffer + (uint16_t)process_proto->total_consumed,
-                process_proto->total_received - (uint16_t)process_proto->total_consumed);
-            process_proto->total_received -= (uint16_t)process_proto->total_consumed;
+            memmove(process_proto PROTO_MEMBER process_buffer, process_proto PROTO_MEMBER process_buffer + (uint16_t)process_proto PROTO_MEMBER total_consumed,
+                process_proto PROTO_MEMBER total_received - (uint16_t)process_proto PROTO_MEMBER total_consumed);
+            process_proto PROTO_MEMBER total_received -= (uint16_t)process_proto PROTO_MEMBER total_consumed;
         }
     }
 
@@ -346,20 +377,22 @@ static int recv_process(
 
 #ifdef PROTO_CLIENT
 
-void proto_client_process(struct proto_process_t* proto,
+void proto_client_process(
+#ifndef STACKLESS_PROCESS
+    struct proto_process_t* proto,
+#endif
     proto_start_request_callback_f start_request,
     proto_next_object_callback_f next,
     proto_complete_request_callback_f complete_request,
     void* user)
 {
 #ifdef __SPECTRUM
-    int polled = poll_fd(client_socket);
-    if (polled & POLLIN)
+    int polled;
+    while ((polled = poll_fd(client_socket)) & POLLIN)
     {
 
 #ifdef STACKLESS_PROCESS
         process_socket = client_socket;
-        process_proto = proto;
         process_start_request = start_request;
         process_next = next;
         process_complete_request = complete_request;
@@ -368,7 +401,7 @@ void proto_client_process(struct proto_process_t* proto,
 
         if (recv_process(
 #ifndef STACKLESS_PROCESS
-            process_socket, process_proto, process_start_request, process_next, process_complete_request, user
+            process_socket, proto, process_start_request, process_next, process_complete_request, user
 #endif
         ) < 0)
         {
@@ -404,7 +437,6 @@ void proto_client_process(struct proto_process_t* proto,
     {
 #ifdef STACKLESS_PROCESS
         process_socket = client_socket;
-        process_proto = proto;
         process_start_request = start_request;
         process_next = next;
         process_complete_request = complete_request;

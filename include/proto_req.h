@@ -70,8 +70,13 @@ extern uint8_t proto_req_send_request(
 /*
  * Should be called instead of proto_client_process with custom callbacks, if you want the request-response system
  */
+#ifdef STACKLESS_PROCESS
+#define proto_req_client_process(handle) \
+    proto_client_process(proto_req_new_request, proto_req_object_callback, proto_req_recv, handle)
+#else
 #define proto_req_client_process(proto, handle) \
     proto_client_process(proto, proto_req_new_request, proto_req_object_callback, proto_req_recv, handle)
+#endif
 
 /*
  * Should be called instead of proto_server_process with custom callbacks, if you want the request-response system

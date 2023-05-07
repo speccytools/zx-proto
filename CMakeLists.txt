@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
-project(channels_proto C)
+project(channels_proto C ASM)
 
 add_library(channels_proto OBJECT
     src/proto.c
     src/proto_objects.c
     src/proto_req.c
+)
+
+add_library(channels_proto_asm OBJECT
+    src/proto_object_read.asm
 )
 
 add_library(channels_proto_server OBJECT

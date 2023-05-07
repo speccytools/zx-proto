@@ -12,8 +12,7 @@
 #endif
 #endif
 
-
-void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStackObjectProperty* last_property)
+void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStackObjectProperty* last_property) API_DECL
 {
     uint16_t object_size = 0;
     ProtoStackObjectProperty* property = last_property;
@@ -55,7 +54,10 @@ void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStack
     *res_prop = NULL;
 }
 
-uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t object_size, const uint8_t* buffer_from)
+#ifndef __SPECTRUM
+
+/* NOTE: SPECTRUM HAS AN ASSEMBLER IMPLEMENTATION FOR THIS */
+uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t object_size, const uint8_t* buffer_from) API_DECL
 {
     uint8_t number_of_properties = 0;
     {
@@ -91,16 +93,16 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
         while (it < end)
         {
             *properties++ = (ProtoObjectProperty*)it;
-            uint16_t value_size = ((ProtoObjectProperty*)it)->value_size;
-            it += sizeof(ProtoObjectProperty) + value_size;
+            it += sizeof(ProtoObjectProperty) + ((ProtoObjectProperty*)it)->value_size;
         }
     }
 
     *properties = NULL;
     return 0;
 }
+#endif
 
-ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key)
+ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
     while (*prop)
@@ -115,7 +117,7 @@ ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key)
     return NULL;
 }
 
-ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char* match)
+ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char* match) API_DECL
 {
     uint8_t len = strlen(match);
 
@@ -133,7 +135,7 @@ ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char
     return NULL;
 }
 
-uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def)
+uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
     while (*prop)
@@ -150,16 +152,17 @@ uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def)
     return def;
 }
 
-uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def)
+uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
     while (*prop)
     {
-        if ((*prop)->key == key && (*prop)->value_size == sizeof(uint8_t))
-        {
-            uint8_t result;
-            memcpy(&result, (*prop)->value, sizeof(uint8_t));
-            return result;
+        if ((*prop)->key == key
+#ifdef SANITY_CHECKS
+        && (*prop)->value_size == sizeof(uint8_t)
+#endif
+        ) {
+            return *(*prop)->value;
         }
         prop++;
     }
@@ -167,7 +170,7 @@ uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def)
     return def;
 }
 
-uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size)
+uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
     while (*prop)
@@ -190,7 +193,7 @@ uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint1
     return 1;
 }
 
-uint8_t* proto_object_data(ProtoObject* o)
+uint8_t* proto_object_data(ProtoObject* o) API_DECL
 {
     uint8_t number_of_properties = 0;
 

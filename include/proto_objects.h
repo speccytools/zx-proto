@@ -35,6 +35,12 @@ typedef struct ProtoStackObjectProperty
     struct ProtoStackObjectProperty* prev;
 } ProtoStackObjectProperty;
 
+#ifdef SPECTRUM
+#define API_DECL __z88dk_callee
+#else
+#define API_DECL
+#endif
+
 /*
  * A very space efficient generic object witch abuses C flexible array members.
  *
@@ -112,13 +118,13 @@ typedef struct
  * Empty properties (zero size) are ignored.
  * This object is required to be free()'d
  */
-extern ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property);
+extern ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property) API_DECL;
 
 /*
  * Make a copy of an existing object. A new blob of data is allocated and all pointers are recalculated.
  * This object is required to be free()'d
  */
-extern ProtoObject* proto_object_copy(ProtoObject* obj);
+extern ProtoObject* proto_object_copy(ProtoObject* obj) API_DECL;
 
 /*
  * Initialize an object with properties from a single-linked list. An obj could be just a pointer to a buffer that
@@ -126,57 +132,59 @@ extern ProtoObject* proto_object_copy(ProtoObject* obj);
  * Empty properties (zero size) are ignored.
  * This is used by declare_object_on_stack
  */
-extern void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStackObjectProperty* last_property);
+extern void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStackObjectProperty* last_property) API_DECL;
 
 /*
  * Read up an object by known size from some buffer. The obj could be initialized, but no data is actually copied
  * from the buffer_from (needs to be of size just to fit N + 1 property references) - the data is only referenced.
  * No allocations happen so obj could be on stack.
  * If object is required to be used past buffer_from lifetime, a copy has to be made
+ *
+ * NOTE: SPECTRUM HAS AN ASSEMBLER IMPLEMENTATION FOR THIS
  */
-extern uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t object_size, const uint8_t* buffer_from);
+extern uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t object_size, const uint8_t* buffer_from) API_DECL;
 
 /*
  * Find a property by a given key. An object can contain multiple properties with the same key,
  * this function returns only the first match.
  */
-extern ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key);
+extern ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key) API_DECL;
 
 /*
  * Find a property by a given key whose value is also partially matches.
  * An object can contain multiple properties with the same key, this function returns only the first match.
  */
-extern ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char* match);
+extern ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char* match) API_DECL;
 
 /*
  * Get uint16_t property value by a given key. If no property has been found, the default value is returned.
  * An object can contain multiple properties with the same key, this function returns only the first match.
  */
-extern uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def);
+extern uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL;
 
 /*
  * Get uint8_t property value by a given key. If no property has been found, the default value is returned.
  * An object can contain multiple properties with the same key, this function returns only the first match.
  */
-extern uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def);
+extern uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL;
 
 /*
  * Get C-string property value by a given key into target_buffer. If no property has been found, 1 is returned, 0 on success.
  * target_buffer has to be sufficient fot the value size.
  * An object can contain multiple properties with the same key, this function returns only the first match.
  */
-extern uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size);
+extern uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size) API_DECL;
 
 /*
  * Get string value of a given property. A copy is returned (heap allocated), and it is automatically null-terminated.
  */
-extern char* copy_str_property(ProtoObjectProperty* property);
+extern char* copy_str_property(ProtoObjectProperty* property) API_DECL;
 
 /*
  * Returns a pointer to char[object_size + 2] buffer containing the whole object including its properties and size.
  * When sending this over the net, send object_size + 2 bytes
  */
-extern uint8_t* proto_object_data(ProtoObject* o);
+extern uint8_t* proto_object_data(ProtoObject* o) API_DECL;
 
 #ifdef __cplusplus
 }

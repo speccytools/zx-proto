@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property)
+ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property) API_DECL
 {
     uint16_t object_size = 0;
     ProtoStackObjectProperty* property = last_property;
@@ -46,7 +46,7 @@ ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property)
     return obj;
 }
 
-ProtoObject* proto_object_copy(ProtoObject* obj)
+ProtoObject* proto_object_copy(ProtoObject* obj) API_DECL
 {
     uint8_t number_of_properties = 0;
     {
@@ -87,7 +87,7 @@ ProtoObject* proto_object_copy(ProtoObject* obj)
     return copy;
 }
 
-char* copy_str_property(ProtoObjectProperty* property)
+char* copy_str_property(ProtoObjectProperty* property) API_DECL
 {
     char* result = malloc(property->value_size + 1);
     result[property->value_size] = 0;
