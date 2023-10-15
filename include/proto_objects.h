@@ -64,6 +64,14 @@ typedef struct
     ProtoObjectProperty* properties[];
 } ProtoObject;
 
+typedef struct
+{
+    uint8_t flags;
+    uint16_t request_size;
+    uint16_t request_id;
+    uint16_t object_size;
+} ProtoObjectRequestHeader;
+
 #pragma pack(pop)
 
 /*
@@ -181,10 +189,15 @@ extern uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer
 extern char* copy_str_property(ProtoObjectProperty* property) API_DECL;
 
 /*
- * Returns a pointer to char[object_size + 2] buffer containing the whole object including its properties and size.
- * When sending this over the net, send object_size + 2 bytes
+ * Returns a pointer to char[object_size + ...] buffer containing the whole object including its properties and size.
+ * When sending this over the net, send object_size + extra bytes
  */
 extern uint8_t* proto_object_data(ProtoObject* o) API_DECL;
+
+/*
+ * Same as above, but expects the very first 2 bytes to be the object size, and updates it.
+ */
+extern uint8_t* proto_object_data_update_size(ProtoObject* o) API_DECL;
 
 #ifdef __cplusplus
 }

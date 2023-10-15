@@ -172,6 +172,13 @@ extern uint8_t* proto_serialize(uint8_t* data, ProtoObject** objects, uint8_t am
  */
 extern int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t request_id, uint8_t flags);
 
+/*
+ * Same as above, but only one object is being sent.
+ * WARNING: This ome assumes that the object has been allocated using proto_object_assign, which allocates extra
+ * sizeof(ProtoObjectRequestHeader) of data to optimize data writing to one call.
+ */
+extern int proto_send_one(int socket, ProtoObject* object, uint16_t request_id, uint8_t flags);
+
 #ifdef __cplusplus
 }
 #endif

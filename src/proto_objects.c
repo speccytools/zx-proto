@@ -28,7 +28,8 @@ void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStack
         property = property->prev;
     }
 
-    uint16_t offsets = sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + 2;
+    uint16_t offsets = sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) +
+        sizeof(ProtoObjectRequestHeader);
 
     uint8_t* raw_data = (uint8_t*)obj + offsets;
     obj->object_size = object_size;
@@ -202,10 +203,16 @@ uint8_t* proto_object_data(ProtoObject* o) API_DECL
         number_of_properties++;
     }
 
-    uint8_t* d = (uint8_t*)o + sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*);
+    return (uint8_t*)o + sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*);
+}
+
+uint8_t* proto_object_data_update_size(ProtoObject* o) API_DECL
+{
+    uint8_t* d = proto_object_data(o);
     /*
-     * This little trick uses the 2 reserved bytes on allocations as a way to send object at one call without reallocations
-     * Those two bytes are getting updated with object size prior to sending. Thus, when sending, you should send object_size + 2
+     * This little trick uses the 2 reserved bytes on allocations as a way to send object
+     * at one call without reallocations. Those bytes are getting updated with object size prior to sending.
+     * Thus, when sending, you should send object_size + 2
      */
     *(uint16_t*)d = o->object_size;
     return d;

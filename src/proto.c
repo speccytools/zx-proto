@@ -261,10 +261,7 @@ static uint8_t process(
                             declare_str_property_on_stack(error, OBJ_PROPERTY_ERROR, err, NULL);
                             declare_object_on_stack(response_object, 256, &error);
 
-                            ProtoObject* objs[1];
-                            objs[0] = response_object;
-
-                            if (proto_send(process_socket, objs, 1, process_proto PROTO_MEMBER request_id,
+                            if (proto_send_one(process_socket, response_object, process_proto PROTO_MEMBER request_id,
                                 PROTO_FLAG_ERROR | PROTO_FLAG_RESPONSE))
                             {
                                 return -1;
@@ -413,7 +410,7 @@ void proto_client_process(
             return;
         }
     }
-    if (polled & POLLHUP)
+    if (polled & (POLLHUP | POLLNVAL))
     {
         sockclose(client_socket);
         if (client_disconnected)
@@ -510,7 +507,7 @@ uint8_t* proto_serialize(uint8_t* data, ProtoObject** objects, uint8_t amount, u
     for (uint8_t i = 0; i < amount; i++)
     {
         ProtoObject* object = objects[i];
-        memcpy(data, (void*)proto_object_data(object), object->object_size + 2);
+        memcpy(data, (void*)proto_object_data_update_size(object), object->object_size + 2);
         data += object->object_size + 2;
     }
 
@@ -546,7 +543,7 @@ int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t reque
     for (uint8_t i = 0; i < amount; i++)
     {
         ProtoObject* object = objects[i];
-        memcpy(data + write_size, (void*)proto_object_data(object), object->object_size + 2);
+        memcpy(data + write_size, (void*)proto_object_data_update_size(object), object->object_size + 2);
         write_size += object->object_size + 2;
     }
 
@@ -573,12 +570,28 @@ int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t reque
     {
         ProtoObject* object = objects[i];
 
-        if (send(socket, (void*) proto_object_data(object), object->object_size + 2, 0) < 0)
+        if (send(socket, (void*) proto_object_data_update_size(object), object->object_size + 2, 0) < 0)
         {
             return 3;
         }
     }
 #endif
+
+    return 0;
+}
+
+int proto_send_one(int socket, ProtoObject* object, uint16_t request_id, uint8_t flags)
+{
+    ProtoObjectRequestHeader* d = (ProtoObjectRequestHeader*)proto_object_data(object);
+    d->flags = flags;
+    d->object_size = object->object_size;
+    d->request_size = object->object_size + 2;
+    d->request_id = request_id;
+
+    if (send(socket, (void*)d, object->object_size + sizeof(ProtoObjectRequestHeader), 0) < 0)
+    {
+        return 3;
+    }
 
     return 0;
 }

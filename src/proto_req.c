@@ -105,8 +105,5 @@ uint8_t proto_req_send_request(
     req_processor->request_object_callback = object_callback;
     req_processor->error_callback = err;
 
-    ProtoObject* objs[1];
-    objs[0] = object;
-
-    return proto_send(sockfd, objs, 1, ++req_processor->current_request_id, 0);
+    return proto_send_one(sockfd, object, ++req_processor->current_request_id, 0);
 }
