@@ -103,6 +103,7 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
 }
 #endif
 
+#ifndef __SPECTRUM
 ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
@@ -117,6 +118,7 @@ ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key) API_DECL
 
     return NULL;
 }
+#endif
 
 ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char* match) API_DECL
 {
@@ -136,6 +138,7 @@ ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char
     return NULL;
 }
 
+#ifndef __SPECTRUM
 uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
@@ -170,6 +173,8 @@ uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL
 
     return def;
 }
+
+#endif
 
 uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size) API_DECL
 {

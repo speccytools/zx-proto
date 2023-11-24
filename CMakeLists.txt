@@ -9,6 +9,7 @@ add_library(channels_proto OBJECT
 
 add_library(channels_proto_asm OBJECT
     src/proto_object_read.asm
+    src/proto_objects.asm
 )
 
 add_library(channels_proto_server OBJECT

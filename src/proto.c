@@ -354,12 +354,16 @@ static int recv_process(
 #ifdef NONBLOCKING_RECV
     if (n_received == 0)
     {
-        return -3;
+        return errno;
     }
 
     if (errno == EWOULDBLOCK)
     {
         return 0;
+    }
+    else if (n_received <= 0)
+    {
+        return errno;
     }
 
 #else
