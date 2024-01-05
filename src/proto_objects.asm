@@ -1,5 +1,6 @@
 public _get_uint16_property
 public _get_uint8_property
+public _get_property_ptr
 public _find_property
 
 ; uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
@@ -162,5 +163,58 @@ get_not_found:
     ld hl, 0                        ; return NULL
 
 done:
+    push iy
+    ret
+
+
+; void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL
+
+_get_property_ptr:
+    pop iy                          ; store ret
+
+    pop bc                          ; get key into c
+    pop hl                          ; ProtoObject*
+
+    inc hl                          ; access ProtoObjectProperty* properties[];
+    inc hl                          ; by skipping object_size
+
+    ld de, hl                       ; get it into de
+
+get_ptr_next_property:
+    ld a, (de)                      ; get ProtoObjectProperty
+    ld ixl, a
+    inc de                          ; into ix
+    ld a, (de)
+    ld ixh, a
+    inc de
+
+    ld a, ixh                       ; NULL?
+    or ixl
+    jr z, get_ptr_not_found         ; end of object, return
+
+    ; each ProtoObjectProperty has the following syntax
+    ; uint16_t value_size;
+    ; uint8_t key;
+    ; char value[];
+
+    ld a, c                         ; get key into a
+    cp (ix+2)                       ; compaere key
+    jr nz, get_ptr_next_property    ; key does not match
+
+    ld a, ixh                       ; value
+    ld h, a
+    ld a, ixl
+    ld l, a
+
+    inc hl                          ; skip key and size
+    inc hl
+    inc hl
+
+    jr get_ptr_done
+
+get_ptr_not_found:
+    ld hl, 0                        ; return NULL
+
+get_ptr_done:
     push iy
     ret

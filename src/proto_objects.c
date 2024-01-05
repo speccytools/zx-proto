@@ -156,6 +156,24 @@ uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
     return def;
 }
 
+void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL
+{
+    ProtoObjectProperty** prop = o->properties;
+    while (*prop)
+    {
+        if ((*prop)->key == key
+#ifdef SANITY_CHECKS
+            && (*prop)->value_size == sizeof(uint8_t)
+#endif
+                ) {
+            return (*prop)->value;
+        }
+        prop++;
+    }
+
+    return NULL;
+}
+
 uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL
 {
     ProtoObjectProperty** prop = o->properties;
