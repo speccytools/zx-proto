@@ -183,6 +183,12 @@ extern uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_
 extern void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL;
 
 /*
+ * Get property pointer value by a given key, expecting certain size. If no property has been found, NULL is returned.
+ * Returned value should be case to an appropriate structure.
+ */
+extern void* get_property_ptr_size(ProtoObject* o, uint8_t key, size_t expected_size) API_DECL;
+
+/*
  * Get C-string property value by a given key into target_buffer. If no property has been found, 1 is returned, 0 on success.
  * target_buffer has to be sufficient fot the value size.
  * An object can contain multiple properties with the same key, this function returns only the first match.

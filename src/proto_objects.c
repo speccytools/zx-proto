@@ -161,11 +161,21 @@ void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL
     ProtoObjectProperty** prop = o->properties;
     while (*prop)
     {
-        if ((*prop)->key == key
-#ifdef SANITY_CHECKS
-            && (*prop)->value_size == sizeof(uint8_t)
-#endif
-                ) {
+        if ((*prop)->key == key) {
+            return (*prop)->value;
+        }
+        prop++;
+    }
+
+    return NULL;
+}
+
+void* get_property_ptr_size(ProtoObject* o, uint8_t key, size_t expected_size) API_DECL
+{
+    ProtoObjectProperty** prop = o->properties;
+    while (*prop)
+    {
+        if (((*prop)->key == key) && ((*prop)->value_size == expected_size)) {
             return (*prop)->value;
         }
         prop++;
