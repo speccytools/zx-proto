@@ -241,7 +241,7 @@ uint8_t* proto_object_data(ProtoObject* o) API_DECL
 
 uint8_t* proto_object_data_update_size(ProtoObject* o) API_DECL
 {
-    uint8_t* d = proto_object_data(o);
+    uint8_t* d = proto_object_data(o) + sizeof(ProtoObjectRequestHeader) - 2;
     /*
      * This little trick uses the 2 reserved bytes on allocations as a way to send object
      * at one call without reallocations. Those bytes are getting updated with object size prior to sending.

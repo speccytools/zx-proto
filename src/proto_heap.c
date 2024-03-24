@@ -19,9 +19,9 @@ ProtoObject* proto_object_allocate(ProtoStackObjectProperty* last_property) API_
         property = property->prev;
     }
 
-    uint8_t* raw_malloc = malloc(sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + object_size + 2);
+    uint8_t* raw_malloc = malloc(sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + object_size + sizeof(ProtoObjectRequestHeader));
     ProtoObject* obj = (ProtoObject*)raw_malloc;
-    raw_malloc += sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + 2;
+    raw_malloc += sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + sizeof(ProtoObjectRequestHeader);
     obj->object_size = object_size;
     ProtoObjectProperty** res_prop = obj->properties;
 
@@ -59,9 +59,9 @@ ProtoObject* proto_object_copy(ProtoObject* obj) API_DECL
         }
     }
 
-    uint8_t* raw_malloc = malloc(sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + obj->object_size + 2);
+    uint8_t* raw_malloc = malloc(sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + obj->object_size + sizeof(ProtoObjectRequestHeader));
     ProtoObject* copy = (ProtoObject*)raw_malloc;
-    uint8_t* dst_data = raw_malloc + sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + 2;
+    uint8_t* dst_data = raw_malloc + sizeof(ProtoObject) + (number_of_properties + 1) * sizeof(ProtoObjectProperty*) + sizeof(ProtoObjectRequestHeader);
 
     copy->object_size = obj->object_size;
 
