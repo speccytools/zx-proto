@@ -205,7 +205,12 @@ static uint8_t process(
                     process_proto PROTO_MEMBER total_consumed += 5;
                     available -= 5;
                     process_proto PROTO_MEMBER state = proto_process_recv_object_size;
-                    process_start_request(process_socket, process_proto, process_user);
+                    process_start_request(
+#ifndef PROTO_CLIENT
+                        process_socket,
+                        process_proto,
+#endif
+                        process_user);
                     /* fallthrough */
                 }
                 else
@@ -243,7 +248,12 @@ static uint8_t process(
 
                         ProtoObject* obj = (ProtoObject*)object_buffer;
                         proto_object_read(obj, 128, process_proto PROTO_MEMBER recv_object_size, data);
-                        process_next(process_socket, process_proto, obj, process_user);
+                        process_next(
+#ifndef PROTO_CLIENT
+                            process_socket,
+                            process_proto,
+#endif
+                            obj, process_user);
                     }
 
                     process_proto PROTO_MEMBER recv_objects_num++;
@@ -254,14 +264,22 @@ static uint8_t process(
 
                     if (process_proto PROTO_MEMBER recv_consumed >= process_proto PROTO_MEMBER recv_size)
                     {
-                        const char* err = process_complete_request(process_socket, process_proto, process_user);
+                        const char* err = process_complete_request(
+#ifndef PROTO_CLIENT
+                            process_socket, process_proto,
+#endif
+                            process_user);
 
                         if (err)
                         {
                             declare_str_property_on_stack(error, OBJ_PROPERTY_ERROR, err, NULL);
                             declare_object_on_stack(response_object, 256, &error);
 
-                            if (proto_send_one(process_socket, response_object, process_proto PROTO_MEMBER request_id,
+                            if (proto_send_one(
+#ifndef PROTO_CLIENT
+                                process_socket,
+#endif
+                                response_object, process_proto PROTO_MEMBER request_id,
                                 PROTO_FLAG_ERROR | PROTO_FLAG_RESPONSE))
                             {
                                 return -1;
@@ -519,6 +537,7 @@ uint8_t* proto_serialize(uint8_t* data, ProtoObject** objects, uint8_t amount, u
 }
 #endif
 
+#ifdef PROTO_SEND
 int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t request_id, uint8_t flags)
 {
     uint16_t req_size = 0;
@@ -583,8 +602,13 @@ int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t reque
 
     return 0;
 }
+#endif
 
-int proto_send_one(int socket, ProtoObject* object, uint16_t request_id, uint8_t flags)
+int proto_send_one(
+#ifndef PROTO_CLIENT
+    int client_socket,
+#endif
+    ProtoObject* object, uint16_t request_id, uint8_t flags)
 {
     ProtoObjectRequestHeader* d = (ProtoObjectRequestHeader*)proto_object_data(object);
     d->flags = flags;
@@ -592,10 +616,23 @@ int proto_send_one(int socket, ProtoObject* object, uint16_t request_id, uint8_t
     d->request_size = object->object_size + 2;
     d->request_id = request_id;
 
-    if (send(socket, (void*)d, object->object_size + sizeof(ProtoObjectRequestHeader), 0) < 0)
+    if (send(client_socket, (void*)d, object->object_size + sizeof(ProtoObjectRequestHeader), 0) < 0)
     {
         return 3;
     }
 
     return 0;
+}
+
+int proto_send_one_nf(
+#ifndef PROTO_CLIENT
+    int client_socket,
+#endif
+    ProtoObject* object) FASTCALL
+{
+    return proto_send_one(
+#ifndef PROTO_CLIENT
+               client_socket,
+#endif
+               object, 0, 0);
 }

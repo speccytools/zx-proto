@@ -10,12 +10,15 @@ extern "C" {
 
 #ifdef __SPECTRUM
 #define PROTO_CLIENT (1)
+#define FASTCALL __z88dk_fastcall
 #else
 #define PROTO_SERVER (1)
 #define SANITY_CHECKS (1)
+#define FASTCALL
 #endif
 
 #ifdef PROTO_SERVER
+#define PROTO_SEND (1)
 #define NONBLOCKING_RECV (1)
 #endif
 
@@ -58,10 +61,27 @@ struct proto_process_t
 #pragma pack(pop)
 
 typedef void (*disconnected_callback_f)(void);
-typedef void (*proto_start_request_callback_f)(int socket, struct proto_process_t* proto, void* user);
-typedef void (*proto_next_object_callback_f)(int socket, struct proto_process_t* proto, ProtoObject* object, void* user);
+typedef void (*proto_start_request_callback_f)(
+#ifndef PROTO_CLIENT
+    int socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user);
+
+typedef void (*proto_next_object_callback_f)(
+#ifndef PROTO_CLIENT
+    int socket,
+    struct proto_process_t* process_proto,
+#endif
+    ProtoObject* object, void* user);
+
 // return NULL in case of success, or a text explaining the error
-typedef const char* (*proto_complete_request_callback_f)(int socket, struct proto_process_t* proto, void* user);
+typedef const char* (*proto_complete_request_callback_f)(
+#ifndef PROTO_CLIENT
+    int socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user);
 
 /*
  * Initialize a proto with a working buffer provided. Has to be called ones
@@ -157,6 +177,7 @@ extern uint32_t proto_serialize_get_size(ProtoObject** objects, uint8_t amount);
 extern uint8_t* proto_serialize(uint8_t* data, ProtoObject** objects, uint8_t amount, uint16_t request_id, uint8_t flags);
 #endif
 
+#ifdef PROTO_SEND
 /*
  * Launch a request from one side to another.
  * socket: a socket send the request to
@@ -171,13 +192,29 @@ extern uint8_t* proto_serialize(uint8_t* data, ProtoObject** objects, uint8_t am
  *     proto_req_recv, &req_handle)
  */
 extern int proto_send(int socket, ProtoObject** objects, uint8_t amount, uint16_t request_id, uint8_t flags);
+#endif
 
 /*
  * Same as above, but only one object is being sent.
  * WARNING: This ome assumes that the object has been allocated using proto_object_assign, which allocates extra
  * sizeof(ProtoObjectRequestHeader) of data to optimize data writing to one call.
  */
-extern int proto_send_one(int socket, ProtoObject* object, uint16_t request_id, uint8_t flags);
+extern int proto_send_one(
+#ifndef PROTO_CLIENT
+    int client_socket,
+#endif
+    ProtoObject* object, uint16_t request_id, uint8_t flags);
+
+/*
+ * Same as above, but no flags.
+ * WARNING: This ome assumes that the object has been allocated using proto_object_assign, which allocates extra
+ * sizeof(ProtoObjectRequestHeader) of data to optimize data writing to one call.
+ */
+extern int proto_send_one_nf(
+#ifndef PROTO_CLIENT
+    int client_socket,
+#endif
+    ProtoObject* object) FASTCALL;
 
 #ifdef __cplusplus
 }

@@ -1,28 +1,49 @@
 #include <proto_req.h>
 
-void proto_req_new_request(int socket, struct proto_process_t* proto, void* user)
+#ifdef PROTO_CLIENT
+#define PROTO_MEMBER .
+extern struct proto_process_t process_proto;
+#else
+#define PROTO_MEMBER ->
+#endif
+
+void proto_req_new_request(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user)
 {
     struct proto_req_processor_t* req_handle = (struct proto_req_processor_t*)user;
 
-    if ((proto->recv_flags & PROTO_FLAG_RESPONSE) == 0)
+    if ((process_proto PROTO_MEMBER recv_flags & PROTO_FLAG_RESPONSE) == 0)
     {
         if (req_handle->incoming_request)
-            req_handle->incoming_request(socket, proto, req_handle->user);
+            req_handle->incoming_request(
+#ifndef PROTO_CLIENT
+                client_socket, process_proto,
+#endif
+                req_handle->user);
     }
 }
 
-void proto_req_object_callback(int socket, struct proto_process_t* proto, ProtoObject* object, void* user)
+void proto_req_object_callback(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    ProtoObject* object, void* user)
 {
     struct proto_req_processor_t* req_handle = (struct proto_req_processor_t*)user;
 
-    if (proto->recv_flags & PROTO_FLAG_RESPONSE)
+    if (process_proto PROTO_MEMBER recv_flags & PROTO_FLAG_RESPONSE)
     {
-        if (req_handle->current_request_id != proto->request_id)
+        if (req_handle->current_request_id != process_proto PROTO_MEMBER request_id)
         {
             return;
         }
 
-        if (proto->recv_flags & PROTO_FLAG_ERROR)
+        if (process_proto PROTO_MEMBER recv_flags & PROTO_FLAG_ERROR)
         {
             if (req_handle->object_num == 0)
             {
@@ -45,17 +66,27 @@ void proto_req_object_callback(int socket, struct proto_process_t* proto, ProtoO
     else
     {
         if (req_handle->incoming_object)
-            req_handle->incoming_object(socket, proto, object, req_handle->user);
+            req_handle->incoming_object(
+#ifndef PROTO_CLIENT
+                client_socket,
+                process_proto,
+#endif
+                object, req_handle->user);
     }
 }
 
-const char* proto_req_recv(int socket, struct proto_process_t* proto, void* user)
+const char* proto_req_recv(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user)
 {
     struct proto_req_processor_t* req_handle = (struct proto_req_processor_t*)user;
 
-    if (proto->recv_flags & PROTO_FLAG_RESPONSE)
+    if (process_proto PROTO_MEMBER recv_flags & PROTO_FLAG_RESPONSE)
     {
-        if (req_handle->current_request_id != proto->request_id)
+        if (req_handle->current_request_id != process_proto PROTO_MEMBER request_id)
         {
             return "Unknown request id";
         }
@@ -70,40 +101,58 @@ const char* proto_req_recv(int socket, struct proto_process_t* proto, void* user
         }
         else
         {
-            req_handle->response_callback(proto);
+            req_handle->response_callback(
+#ifndef PROTO_CLIENT
+                process_proto
+#endif
+            );
         }
     }
     else
     {
-        return req_handle->incoming_complete(socket, proto, req_handle->user);
+        return req_handle->incoming_complete(
+#ifndef PROTO_CLIENT
+                client_socket, process_proto,
+#endif
+                req_handle->user);
     }
 
     return NULL;
 }
 
-void proto_req_init_processor(
-    struct proto_req_processor_t* req_processor,
-    proto_start_request_callback_f incoming_request,
-    proto_next_object_callback_f incoming_object,
-    proto_complete_request_callback_f incoming_complete,
-    void* user)
-{
-    req_processor->incoming_request = incoming_request;
-    req_processor->incoming_object = incoming_object;
-    req_processor->incoming_complete = incoming_complete;
-    req_processor->user = user;
-}
-
 uint8_t proto_req_send_request(
-    struct proto_req_processor_t* req_processor,
-    int sockfd, ProtoObject* object, proto_req_object_callback_f object_callback,
+#ifndef STATIC_PROCESSOR
+    struct proto_req_processor_t* proto_req_processor,
+#endif
+#ifndef PROTO_CLIENT
+    int sockfd,
+#endif
+    ProtoObject* object, proto_req_object_callback_f object_callback,
     proto_req_response_f cb, proto_req_error_callback_f err)
 {
-    req_processor->object_num = 0;
-    req_processor->notify_error = 0;
-    req_processor->response_callback = cb;
-    req_processor->request_object_callback = object_callback;
-    req_processor->error_callback = err;
+#ifdef STATIC_PROCESSOR
+    proto_req_processor.object_num = 0;
+    proto_req_processor.notify_error = 0;
+    proto_req_processor.response_callback = cb;
+    proto_req_processor.request_object_callback = object_callback;
+    proto_req_processor.error_callback = err;
+#else
+    proto_req_processor->object_num = 0;
+    proto_req_processor->notify_error = 0;
+    proto_req_processor->response_callback = cb;
+    proto_req_processor->request_object_callback = object_callback;
+    proto_req_processor->error_callback = err;
+#endif
 
-    return proto_send_one(sockfd, object, ++req_processor->current_request_id, 0);
+    return proto_send_one(
+#ifndef PROTO_CLIENT
+               sockfd,
+#endif
+               object,
+#ifdef STATIC_PROCESSOR
+               ++proto_req_processor.current_request_id,
+#else
+               ++proto_req_processor->current_request_id,
+#endif
+    0);
 }

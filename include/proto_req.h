@@ -6,12 +6,24 @@
 #include "proto.h"
 #include "proto_objects.h"
 
+#ifdef __SPECTRUM
+#define STATIC_PROCESSOR (1)
+#endif
+
+#ifdef STATIC_PROCESSOR
+extern struct proto_req_processor_t proto_req_processor;
+#endif
+
 /*
  * A request handling sub-library, made to distinguish between request responses from the other party, or
  * new requests.
  */
 
-typedef void (*proto_req_response_f)(struct proto_process_t* proto);
+typedef void (*proto_req_response_f)(
+#ifndef PROTO_CLIENT
+    struct proto_process_t* process_proto
+#endif
+);
 typedef void (*proto_req_object_callback_f)(uint8_t index, ProtoObject* object);
 typedef void (*proto_req_error_callback_f)(const char* error);
 
@@ -42,12 +54,19 @@ struct proto_req_processor_t
  * incoming_complete: will be called once all objects have been received
  * user: user data that will be supplied to any of the above
  */
-extern void proto_req_init_processor(
-    struct proto_req_processor_t* req_processor,
-    proto_start_request_callback_f incoming_request,
-    proto_next_object_callback_f incoming_object,
-    proto_complete_request_callback_f incoming_complete,
-    void* user);
+#ifdef STATIC_PROCESSOR
+#define proto_req_init_processor(v_incoming_request, v_incoming_object, v_incoming_complete, v_user) \
+    proto_req_processor.incoming_request = v_incoming_request; \
+    proto_req_processor.incoming_object = v_incoming_object; \
+    proto_req_processor.incoming_complete = v_incoming_complete; \
+    proto_req_processor.user = v_user;
+#else
+#define proto_req_init_processor(req_processor, v_incoming_request, v_incoming_object, v_incoming_complete, v_user) \
+    (req_processor)->incoming_request = v_incoming_request; \
+    (req_processor)->incoming_object = v_incoming_object; \
+    (req_processor)->incoming_complete = v_incoming_complete; \
+    (req_processor)->user = v_user;
+#endif
 
 /*
  * Used to issue a particular request and receive a response *JUST* to that request. Any other responses will be
@@ -63,8 +82,13 @@ extern void proto_req_init_processor(
  * err: when the response has concluded (error)
  */
 extern uint8_t proto_req_send_request(
-    struct proto_req_processor_t* req_processor,
-    int sockfd, ProtoObject* object, proto_req_object_callback_f object_callback,
+#ifndef STATIC_PROCESSOR
+    struct proto_req_processor_t* proto_req_processor,
+#endif
+#ifndef PROTO_CLIENT
+    int sockfd,
+#endif
+    ProtoObject* object, proto_req_object_callback_f object_callback,
     proto_req_response_f cb, proto_req_error_callback_f err);
 
 /*
@@ -96,8 +120,25 @@ extern uint8_t proto_req_send_request(
  *
  * to facilitate request handing on individual basis.
  */
-extern void proto_req_new_request(int socket, struct proto_process_t* proto, void* user);
-extern void proto_req_object_callback(int socket, struct proto_process_t* proto, ProtoObject* object, void* user);
-extern const char* proto_req_recv(int socket, struct proto_process_t* proto, void* user);
+extern void proto_req_new_request(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user);
+
+extern void proto_req_object_callback(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    ProtoObject* object, void* user);
+
+extern const char* proto_req_recv(
+#ifndef PROTO_CLIENT
+    int client_socket,
+    struct proto_process_t* process_proto,
+#endif
+    void* user);
 
 #endif
