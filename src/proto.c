@@ -113,13 +113,27 @@ int proto_listen(int port)
 #endif
 
 #ifdef PROTO_CLIENT
-void proto_disconnect()
+static void proto_close_client_socket()
 {
     if (client_socket)
     {
         sockclose(client_socket);
         client_socket = 0;
     }
+}
+
+static void proto_notify_disconnected()
+{
+    proto_close_client_socket();
+    if (client_disconnected)
+    {
+        client_disconnected();
+    }
+}
+
+void proto_disconnect()
+{
+    proto_close_client_socket();
 }
 
 int proto_connect(const char* host, int port, disconnected_callback_f disconnected)
@@ -424,21 +438,13 @@ void proto_client_process(
 #endif
         ) < 0)
         {
-            sockclose(client_socket);
-            if (client_disconnected)
-            {
-                client_disconnected();
-            }
+            proto_notify_disconnected();
             return;
         }
     }
     if (polled & (POLLHUP | POLLNVAL))
     {
-        sockclose(client_socket);
-        if (client_disconnected)
-        {
-            client_disconnected();
-        }
+        proto_notify_disconnected();
     }
 #else
     struct pollfd fds[1];
@@ -467,22 +473,14 @@ void proto_client_process(
 #endif
         ) < 0)
         {
-            sockclose(client_socket);
-            if (client_disconnected)
-            {
-                client_disconnected();
-            }
+            proto_notify_disconnected();
             return;
         }
     }
 
     if ( fds[0].revents & POLLHUP )
     {
-        sockclose(client_socket);
-        if (client_disconnected)
-        {
-            client_disconnected();
-        }
+        proto_notify_disconnected();
     }
 
     fds[0].revents = 0;
