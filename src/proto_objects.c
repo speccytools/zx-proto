@@ -68,7 +68,12 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
         while (it < end)
         {
             ++number_of_properties;
-            uint16_t value_size = *(uint16_t*)it;
+            uint16_t value_size;
+#ifdef __SPECTRUM
+            value_size = *(uint16_t*)it;
+#else
+            memcpy(&value_size, it, sizeof(value_size));
+#endif
             it += sizeof(ProtoObjectProperty) + value_size;
         }
 
@@ -247,6 +252,10 @@ uint8_t* proto_object_data_update_size(ProtoObject* o) API_DECL
      * at one call without reallocations. Those bytes are getting updated with object size prior to sending.
      * Thus, when sending, you should send object_size + 2
      */
+#ifdef __SPECTRUM
     *(uint16_t*)d = o->object_size;
+#else
+    memcpy(d, &o->object_size, sizeof(o->object_size));
+#endif
     return d;
 }

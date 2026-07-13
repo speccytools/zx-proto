@@ -236,7 +236,12 @@ static uint8_t process(
             {
                 if (available >= sizeof(uint16_t))
                 {
+#ifdef __SPECTRUM
                     process_proto PROTO_MEMBER recv_object_size = *(uint16_t*)data;
+#else
+                    memcpy(&process_proto PROTO_MEMBER recv_object_size, data,
+                        sizeof(process_proto PROTO_MEMBER recv_object_size));
+#endif
                     process_proto PROTO_MEMBER total_consumed += 2;
                     available -= 2;
                     data += 2;
@@ -258,7 +263,11 @@ static uint8_t process(
 #ifdef STACKLESS_PROCESS
                         static
 #endif
+#ifdef __SPECTRUM
                         uint8_t object_buffer[128];
+#else
+                        uintptr_t object_buffer[(128 + sizeof(uintptr_t) - 1) / sizeof(uintptr_t)];
+#endif
 
                         ProtoObject* obj = (ProtoObject*)object_buffer;
                         proto_object_read(obj, 128, process_proto PROTO_MEMBER recv_object_size, data);
