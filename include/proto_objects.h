@@ -116,10 +116,17 @@ typedef struct
  * last_property is a last property of a daisy-chain of properties. Every property declared, except the first one, has a previous property.
  * Thus the method can reconstruct the whole object wihout having to allocate a separate list.
  */
-#define declare_object_on_stack(name, buffer_size, last_property)     \
-    uint8_t name ## _buffer [buffer_size];                            \
-    ProtoObject* name = (ProtoObject*)name ## _buffer;                \
+#ifdef __SPECTRUM
+#define declare_object_on_stack(name, buffer_size, last_property)      \
+    uint8_t name ## _buffer [buffer_size];                             \
+    ProtoObject* name = (ProtoObject*)name ## _buffer;                 \
     proto_object_assign(name, buffer_size, last_property);
+#else
+#define declare_object_on_stack(name, buffer_size, last_property)      \
+    uintptr_t name ## _buffer [(buffer_size + sizeof(uintptr_t) - 1) / sizeof(uintptr_t)]; \
+    ProtoObject* name = (ProtoObject*)name ## _buffer;                 \
+    proto_object_assign(name, buffer_size, last_property);
+#endif
 
 /*
  * Construct an object from a single-linked list of properties (usually declared on stack via declare_property_on_stack)
