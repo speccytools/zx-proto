@@ -12,6 +12,24 @@
 #endif
 #endif
 
+#ifndef __SPECTRUM
+static uint16_t proto_property_value_size(const ProtoObjectProperty* property)
+{
+    uint16_t value_size;
+    memcpy(&value_size, &property->value_size, sizeof(value_size));
+    return value_size;
+}
+
+static void proto_property_write(uint8_t* target, uint8_t key, const char* value, uint16_t value_size)
+{
+    memcpy(target, &value_size, sizeof(value_size));
+    target[sizeof(value_size)] = key;
+    memcpy(target + sizeof(ProtoObjectProperty), value, value_size);
+}
+#else
+#define proto_property_value_size(property) ((property)->value_size)
+#endif
+
 void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStackObjectProperty* last_property) API_DECL
 {
     uint16_t object_size = 0;
@@ -33,7 +51,7 @@ void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStack
 
     uint8_t* raw_data = (uint8_t*)obj + offsets;
     obj->object_size = object_size;
-    ProtoObjectProperty** res_prop = obj->properties;
+    ProtoObjectPropertyPtr* res_prop = obj->properties;
 
     property = last_property;
     while (property)
@@ -43,11 +61,15 @@ void proto_object_assign(ProtoObject* obj, uint16_t buffer_available, ProtoStack
             ProtoObjectProperty *target_property = (ProtoObjectProperty *) raw_data;
             *res_prop++ = target_property;
 
+#ifdef __SPECTRUM
             target_property->key = property->key;
             target_property->value_size = property->value_size;
             memcpy(target_property->value, property->value, property->value_size);
+#else
+            proto_property_write(raw_data, property->key, property->value, property->value_size);
+#endif
 
-            raw_data += target_property->value_size + sizeof(ProtoObjectProperty);
+            raw_data += property->value_size + sizeof(ProtoObjectProperty);
         }
         property = property->prev;
     }
@@ -90,7 +112,7 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
 
     obj->object_size = object_size;
 
-    ProtoObjectProperty** properties = obj->properties;
+    ProtoObjectPropertyPtr* properties = obj->properties;
 
     {
         // initialize pointers
@@ -99,7 +121,7 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
         while (it < end)
         {
             *properties++ = (ProtoObjectProperty*)it;
-            it += sizeof(ProtoObjectProperty) + ((ProtoObjectProperty*)it)->value_size;
+            it += sizeof(ProtoObjectProperty) + proto_property_value_size((ProtoObjectProperty*)it);
         }
     }
 
@@ -111,7 +133,7 @@ uint8_t proto_object_read(ProtoObject* obj, uint16_t buffer_available, uint16_t 
 #ifndef __SPECTRUM
 ProtoObjectProperty* find_property(ProtoObject* o, uint8_t key) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
         if ((*prop)->key == key)
@@ -129,11 +151,11 @@ ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char
 {
     uint8_t len = strlen(match);
 
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
         ProtoObjectProperty* p = *prop;
-        if (p->key == key && p->value_size >= len && (memcmp(p->value, match, len) == 0))
+        if (p->key == key && proto_property_value_size(p) >= len && (memcmp(p->value, match, len) == 0))
         {
             return p;
         }
@@ -146,10 +168,10 @@ ProtoObjectProperty* find_property_match(ProtoObject* o, uint8_t key, const char
 #ifndef __SPECTRUM
 uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
-        if ((*prop)->key == key && (*prop)->value_size == sizeof(uint16_t))
+        if ((*prop)->key == key && proto_property_value_size(*prop) == sizeof(uint16_t))
         {
             uint16_t result;
             memcpy(&result, (*prop)->value, sizeof(uint16_t));
@@ -163,7 +185,7 @@ uint16_t get_uint16_property(ProtoObject* o, uint8_t key, uint16_t def) API_DECL
 
 void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
         if ((*prop)->key == key) {
@@ -177,10 +199,10 @@ void* get_property_ptr(ProtoObject* o, uint8_t key) API_DECL
 
 void* get_property_ptr_size(ProtoObject* o, uint8_t key, size_t expected_size) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
-        if (((*prop)->key == key) && ((*prop)->value_size == expected_size)) {
+        if (((*prop)->key == key) && (proto_property_value_size(*prop) == expected_size)) {
             return (*prop)->value;
         }
         prop++;
@@ -191,12 +213,12 @@ void* get_property_ptr_size(ProtoObject* o, uint8_t key, size_t expected_size) A
 
 uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
         if ((*prop)->key == key
 #ifdef SANITY_CHECKS
-        && (*prop)->value_size == sizeof(uint8_t)
+        && proto_property_value_size(*prop) == sizeof(uint8_t)
 #endif
         ) {
             return *(*prop)->value;
@@ -211,12 +233,12 @@ uint8_t get_uint8_property(ProtoObject* o, uint8_t key, uint8_t def) API_DECL
 
 uint8_t get_str_property(ProtoObject* o, uint8_t key, char* target_buffer, uint16_t target_buffer_size) API_DECL
 {
-    ProtoObjectProperty** prop = o->properties;
+    ProtoObjectPropertyPtr* prop = o->properties;
     while (*prop)
     {
         if ((*prop)->key == key)
         {
-            uint16_t max_size = (*prop)->value_size;
+            uint16_t max_size = proto_property_value_size(*prop);
             if (max_size >= target_buffer_size)
             {
                 // leave place for zero termination
