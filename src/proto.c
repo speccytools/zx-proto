@@ -351,10 +351,10 @@ static int recv_process(
     uint16_t afford = process_proto PROTO_MEMBER process_buffer_size - process_proto PROTO_MEMBER total_received;
 
 #ifdef NONBLOCKING_RECV
-    int n_received = recv(process_socket, process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received,
+    int n_received = recv(process_socket, (char *)(process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received),
         afford, MSG_DONTWAIT);
 #else
-    int n_received = recv(process_socket, process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received,
+    int n_received = recv(process_socket, (char *)(process_proto PROTO_MEMBER process_buffer + process_proto PROTO_MEMBER total_received),
         afford, 0);
 #endif
 
@@ -386,8 +386,13 @@ static int recv_process(
     }
 
 #ifdef WIN32
-    if(n_received == SOCKET_ERROR && WSAGetLastError() == WSAECONNRESET)
+    if (n_received == SOCKET_ERROR)
     {
+        int error = WSAGetLastError();
+        if (error == WSAEWOULDBLOCK)
+            return 0;
+        if (error == WSAECONNRESET)
+            return -2;
         return -2;
     }
 #endif
@@ -395,9 +400,14 @@ static int recv_process(
 #ifdef NONBLOCKING_RECV
     if (n_received == 0)
     {
+#ifdef WIN32
+        return -2;
+#else
         return errno;
+#endif
     }
 
+#ifndef WIN32
     if (errno == EWOULDBLOCK)
     {
         return 0;
@@ -406,6 +416,7 @@ static int recv_process(
     {
         return errno;
     }
+#endif
 
 #else
     if (n_received <= 0)
